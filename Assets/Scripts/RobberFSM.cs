@@ -33,7 +33,7 @@ public class RobberFSM : MonoBehaviour
 
     IEnumerator Wander()
     {
-        Debug.Log("Wander state");
+        Debug.Log("Robber Wander state");
 
         WanderMov();
 
@@ -45,7 +45,7 @@ public class RobberFSM : MonoBehaviour
             {
                 WanderMov();
                 timer = 0f;
-                Debug.Log("New wander destination set to: " + agent.destination);
+                Debug.Log("New wander destination for Robber set to: " + agent.destination);
             }
 
             if (Vector3.Distance(transform.position, treasure.transform.position) <= approachDistance)
@@ -62,7 +62,7 @@ public class RobberFSM : MonoBehaviour
 
     IEnumerator Approaching()
     {
-        Debug.Log("Approaching state");
+        Debug.Log("Robber Approaching state");
 
         agent.speed = 2f;
         Seek(treasure.transform.position);
@@ -89,14 +89,17 @@ public class RobberFSM : MonoBehaviour
 
     IEnumerator Hiding()
     {
-        Debug.Log("Hiding state");
+        Debug.Log("Robber Hiding state");
 
-        Hide();
+        Vector3 hidingSpot = FindBestHidingSpot();
+        agent.SetDestination(hidingSpot);
 
-        while (true)
+        while (agent.pathPending || agent.remainingDistance > agent.stoppingDistance)
         {
-            yield return wait; // mantengo en Hiding indefinidamente, modificar? y q vuelva a wander
+            yield return null;
         }
+
+        yield return wait;
     }
 
     // Movement methods
@@ -112,15 +115,6 @@ public class RobberFSM : MonoBehaviour
         agent.SetDestination(target);
     }
 
-    private void Hide()
-    {
-        Vector3 hidingSpot = FindBestHidingSpot();
-        if (hidingSpot != Vector3.zero)
-        {
-            agent.SetDestination(hidingSpot);
-        }
-    }
-
     private Vector3 RandomNavMeshLocation()
     {
         Vector3 randomDirection = Random.insideUnitSphere * 10.0f;
@@ -134,21 +128,21 @@ public class RobberFSM : MonoBehaviour
 
     private Vector3 FindBestHidingSpot()
     {
-        GameObject[] obstacles = GameObject.FindGameObjectsWithTag("Obstacle");
-        Vector3 bestSpot = Vector3.zero;
-        float maxDistance = 0.0f;
+        Vector3 directionToCop = transform.position - cop.position;
+        directionToCop.Normalize();
 
-        foreach (GameObject obstacle in obstacles)
+        RaycastHit hit;
+        while (true)
         {
-            float distanceFromCop = Vector3.Distance(obstacle.transform.position, cop.position);
-            if (distanceFromCop > maxDistance)
+            if (Physics.Raycast(transform.position, directionToCop, out hit))
             {
-                maxDistance = distanceFromCop;
-                bestSpot = obstacle.transform.position;
+                Vector3 hidePosition = hit.point + directionToCop * 2.0f; //2.0f es la distancia a la que es escondera del objeto
+                return hidePosition;
             }
+
+            // Si no se encuentra un obstáculo, cambiar la dirección y seguir buscando
+            directionToCop = Random.insideUnitSphere;
+            directionToCop.Normalize();
         }
-
-        return bestSpot;
     }
-
 }
